@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "os-dev-box"
+version = "0.1.0"
+description = "Clone Openstack projects and install development dependencies"
+authors = ["Jack Hodgkiss <identity@jackhodgkiss.uk>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+ansible = "^10.6.0"
+
+[tool.poetry.group.dev.dependencies]
+ansible-lint = { version = "6.22.*", markers = "platform_system != 'Windows'" }
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

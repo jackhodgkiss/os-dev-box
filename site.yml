@@ -1,0 +1,58 @@
+- name: Setup OpenStack Projects
+  hosts: all
+  gather_facts: true
+  tasks:
+    - name: Ensure required packages are present # noqa: package-latest
+      ansible.builtin.apt:
+        package: "{{ required_system_packages }}"
+        update_cache: true
+        state: latest
+      become: true
+
+    - name: Clone OpenStack repositories # noqa: latest[git]
+      ansible.builtin.git:
+        repo: "{{ git_base_url }}/{{ item.key }}"
+        dest: "{{ ansible_facts.user_dir }}/{{ item.key }}"
+        version: "{{ item.value.version | default(omit) }}"
+      with_dict: "{{ projects }}"
+
+    - name: Identify missing system dependancies
+      ansible.builtin.command:
+        cmd: |
+          {% if item.value.extra_profiles | default(false) %}
+          python3 -m bindep -b {{ item.value.extra_profiles | join(' ') }}
+          {% else %}
+          python3 -m bindep -b
+          {% endif %}
+        chdir: "{{ ansible_facts.user_dir }}/{{ item.key }}"
+      register: missing_dependancies
+      failed_when: false
+      changed_when: false
+      with_dict: "{{ projects }}"
+
+    - name: Install missing system dependancies
+      ansible.builtin.apt:
+        name: "{{ item.stdout_lines }}"
+      loop: "{{ missing_dependancies.results }}"
+      become: true
+
+    - name: Create virtualenv for each project
+      ansible.builtin.pip:
+        requirements: "{{ ansible_facts.user_dir }}/{{ item.key }}/requirements.txt"
+        virtualenv: "{{ ansible_facts.user_dir }}/{{ item.key }}/.venv"
+        virtualenv_command: /usr/bin/python3 -m venv
+      with_dict: "{{ projects }}"
+
+    - name: Install test requirements into each project's virtualenv
+      ansible.builtin.pip:
+        requirements: "{{ ansible_facts.user_dir }}/{{ item.key }}/test-requirements.txt"
+        virtualenv: "{{ ansible_facts.user_dir }}/{{ item.key }}/.venv"
+        virtualenv_command: /usr/bin/python3 -m venv
+      with_dict: "{{ projects }}"
+
+    - name: Install `tox` into each project's virtualenv
+      ansible.builtin.pip:
+        name: ['tox']
+        virtualenv: "{{ ansible_facts.user_dir }}/{{ item.key }}/.venv"
+        virtualenv_command: /usr/bin/python3 -m venv
+      with_dict: "{{ projects }}"

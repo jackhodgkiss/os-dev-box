@@ -1,0 +1,11 @@
+---
+required_system_packages:
+  - build-essential
+  - clang
+  - cmake
+  - gettext
+  - git
+  - python3-dev
+  - python3-venv
+  - ripgrep
+  - unzip
